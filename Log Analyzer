@@ -1,0 +1,56 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
+
+public class LogAnalyzer {
+
+    private static final String LOG_FILE_PATH = "server.log";  // Путь к лог-файлу
+    private static final Pattern FAILED_LOGIN_PATTERN = Pattern.compile("Failed login attempt from (\\d+\\.\\d+\\.\\d+\\.\\d+)");  // Паттерн для поиска неудачных попыток входа
+    private static final int MAX_FAILED_ATTEMPTS = 5;  // Максимальное количество неудачных попыток с одного IP
+
+    public static void main(String[] args) {
+        // Чтение логов
+        List<String> logs = readLogFile(LOG_FILE_PATH);
+
+        // Анализируем логи
+        Map<String, Integer> ipFailures = new HashMap<>();
+        List<String> suspiciousEntries = new ArrayList<>();
+
+        for (String log : logs) {
+            Matcher matcher = FAILED_LOGIN_PATTERN.matcher(log);
+
+            if (matcher.find()) {
+                String ip = matcher.group(1);
+                ipFailures.put(ip, ipFailures.getOrDefault(ip, 0) + 1);
+
+                // Если количество неудачных попыток больше максимума, считаем запись подозрительной
+                if (ipFailures.get(ip) >= MAX_FAILED_ATTEMPTS) {
+                    suspiciousEntries.add("Suspicious IP " + ip + " with " + ipFailures.get(ip) + " failed attempts: " + log);
+                }
+            }
+        }
+
+        // Выводим подозрительные записи
+        if (!suspiciousEntries.isEmpty()) {
+            System.out.println("Suspicious activities found:");
+            for (String entry : suspiciousEntries) {
+                System.out.println(entry);
+            }
+        } else {
+            System.out.println("No suspicious activities found.");
+        }
+    }
+
+    // Метод для чтения лог-файла
+    private static List<String> readLogFile(String filePath) {
+        List<String> lines = new ArrayList<>();
+        try {
+            // Чтение файла построчно
+            lines = Files.readAllLines(Paths.get(filePath));
+        } catch (IOException e) {
+            System.err.println("Error reading log file: " + e.getMessage());
+        }
+        return lines;
+    }
+}
